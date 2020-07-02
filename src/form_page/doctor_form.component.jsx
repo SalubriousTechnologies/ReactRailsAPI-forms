@@ -1,38 +1,60 @@
 import React, { useState, createRef } from "react";
 
 const DoctorForm = ({ redirect }) => {
-  // const [doctor, setDoctor] = useState({
-  //   name: "",
-  //   dob: "",
-  //   fees: "",
-  //   revenue_share_attributes: { user_share: 0 },
-  // });
-  // const [fileSelection, setFileSelection] = useState(null);
+  const [doctor, setDoctor] = useState({
+    name: "",
+    dob: "",
+    fees: "",
+  });
+  const [revenueShareAttributes, setRevenueShareAttributes] = useState({
+    user_share: 0,
+  });
 
-  // const handleChange = event => {
-  //   var identifier = event.target.name;
-  //   var value = event.target.value;
-  //   setDoctor({ ...doctor, [identifier]: value });
-  // };
+  const handleDoctorChange = event => {
+    var identifier = event.target.name;
+    var value = event.target.value;
+    setDoctor({ ...doctor, [identifier]: value });
+  };
 
-  // const handleAttributesChange = event => {
-  //   var identifier = event.target.name;
-  //   var value = event.target.value;
-  //   var attributes = {
-  //     ...doctor.revenue_share_attributes,
-  //     [identifier]: value,
-  //   };
-  //   setDoctor({ ...doctor, revenue_share_attributes: attributes });
-  // };
+  const handleRevenueShareAttributeChange = event => {
+    var identifier = event.target.name;
+    var value = event.target.value;
+    setRevenueShareAttributes({
+      ...revenueShareAttributes,
+      [identifier]: value,
+    });
+  };
 
-  // const fileInput = createRef();
-  // const handleFileSelect = () => {
-  //   setFileSelection(fileInput.current.files);
-  // };
+  const addDoctorToParams = formData => {
+    for (const key in doctor) {
+      formData.append(`doctor[${key}]`, doctor[key]);
+    }
+  };
+
+  const addRevenueShareAttributesToParams = formData => {
+    for (const key in revenueShareAttributes) {
+      formData.append(
+        `doctor[revenue_share_attributes][${key}]`,
+        revenueShareAttributes[key]
+      );
+    }
+  };
+
+  const fileInput = createRef();
+  const addDocumentsToParams = formData => {
+    for (let i = 0; i < fileInput.current.files.length; i++) {
+      formData.append("doctor[documents][]", fileInput.current.files[i]);
+    }
+  };
 
   const handleSubmit = event => {
     event.preventDefault();
-    const formData = new FormData(event.target);
+    var formData = new FormData();
+
+    addDoctorToParams(formData);
+    addRevenueShareAttributesToParams(formData);
+    // able to do this because appending is independent
+    addDocumentsToParams(formData);
     fetch("/doctors", {
       method: "POST",
       headers: {},
@@ -40,49 +62,45 @@ const DoctorForm = ({ redirect }) => {
     }).then(response =>
       response.ok ? redirect() : alert("Not created change accordingly")
     );
-    // var data = new FormData(event.target);
   };
 
   return (
+    // To make this cleaner the form input and label fields can be moved to
+    // their own component and the state can be stored in a Redux Store to
+    // simplify the process of form submission
     <form onSubmit={handleSubmit}>
       <label>Doctor Name:</label>
       <input
-        name="doctor[name]"
+        name="name"
         type="text"
-        // value={doctor.name}
-        // onChange={handleChange}
+        value={doctor.name}
+        onChange={handleDoctorChange}
       />
       <label>Date of Birth</label>
       <input
-        name="doctor[dob]"
+        name="dob"
         type="date"
-        // value={doctor.dob}
-        // onChange={handleChange}
+        value={doctor.dob}
+        onChange={handleDoctorChange}
       />
       <label>Fees</label>
       <input
-        name="doctor[fees]"
+        name="fees"
         type="number"
-        // value={doctor.fees}
-        // onChange={handleChange}
+        value={doctor.fees}
+        onChange={handleDoctorChange}
       />
       <br />
       <label>Revenue Share Details</label>
       <input
-        name="doctor[revenue_share_attributes][user_share]"
+        name="user_share"
         type="number"
-        // value={doctor.revenue_share_attributes.user_share}
-        // onChange={handleAttributesChange}
+        value={revenueShareAttributes.user_share}
+        onChange={handleRevenueShareAttributeChange}
       />
       <br />
       <label>Images & Documents</label>
-      <input
-        type="file"
-        name="doctor[document]"
-        // multiple
-        // ref={fileInput}
-        // onChange={handleFileSelect}
-      />
+      <input id="file-uploads" type="file" multiple={true} ref={fileInput} />
       <br />
       <input type="submit" value="Submit" />
     </form>
