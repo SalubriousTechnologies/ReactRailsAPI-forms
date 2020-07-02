@@ -55,7 +55,7 @@ const DoctorForm = ({ redirect }) => {
     addRevenueShareAttributesToParams(formData);
     // able to do this because appending is independent
     addDocumentsToParams(formData);
-    fetch("/doctors", {
+    fetch("http://form-rails-api.herokuapp.com/doctors", {
       method: "POST",
       headers: {},
       body: formData,

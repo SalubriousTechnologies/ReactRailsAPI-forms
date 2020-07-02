@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 const ListDoctor = () => {
   const [doctors, setDoctors] = useState([]);
   useEffect(() => {
-    fetch("/doctors", { headers: { "Content-Type": "application/json" } })
+    fetch("http://form-rails-api.herokuapp.com/doctors", {
+      headers: { "Content-Type": "application/json" },
+    })
       .then(response => response.json())
       .then(data => setDoctors(data));
     return () => {
