@@ -42,36 +42,49 @@ const DoctorForm = ({ redirect }) => {
   };
 
   const fileInput = createRef();
-  const handleFile = event => {
-    for (let i = 0; i < fileInput.current.files.length; i++) {
-      uploadFile(fileInput.current.files[i], i);
-    }
+
+  const handleFile = formData => {
+    return new Promise((resolve, reject) => {
+      const promises = [];
+      for (let i = 0; i < fileInput.current.files.length; i++) {
+        // console.log(
+        //   `handling file ${fileInput.current.files[i]} at index ${i}`
+        // );
+        promises.push(uploadFile(fileInput.current.files[i], i));
+      }
+      Promise.all(promises)
+        .then(() => {
+          for (let i = 0; i < fileInput.current.files.length; i++) {
+            // console.log(`adding hidden field for document_${i}`);
+            formData.append(
+              "doctor[documents][]",
+              document.getElementById(`document_${i}`).value
+            );
+          }
+        })
+        .then(() => resolve("looped through all files!"))
+        .catch(error => reject(error));
+    });
   };
 
   const uploadFile = (file, index) => {
-    const URL =
-      "http://form-rails-api.herokuapp.com/rails/active_storage/direct_uploads";
-    const upload = new DirectUpload(file, URL);
-
-    upload.create((error, blob) => {
-      if (error) {
-        console.log(error);
-      } else {
-        const hiddenField = document.createElement("input");
-        hiddenField.setAttribute("type", "hidden");
-        hiddenField.setAttribute("value", blob.signed_id);
-        hiddenField.id = `document_${index}`;
-        document.querySelector("form").appendChild(hiddenField);
-      }
+    return new Promise((resolve, reject) => {
+      const URL =
+        "http://form-rails-api.herokuapp.com/rails/active_storage/direct_uploads";
+      const upload = new DirectUpload(file, URL);
+      upload.create((error, blob) => {
+        if (error) {
+          reject(error);
+        } else {
+          const hiddenField = document.createElement("input");
+          hiddenField.setAttribute("type", "hidden");
+          hiddenField.setAttribute("value", blob.signed_id);
+          hiddenField.id = `document_${index}`;
+          document.querySelector("form").appendChild(hiddenField);
+          resolve("Success");
+        }
+      });
     });
-  };
-  const addDocumentsToParams = formData => {
-    for (let i = 0; i < fileInput.current.files.length; i++) {
-      formData.append(
-        "doctor[documents][]",
-        document.getElementById(`document_${i}`).value
-      );
-    }
   };
 
   const handleSubmit = event => {
@@ -80,15 +93,19 @@ const DoctorForm = ({ redirect }) => {
 
     addDoctorToParams(formData);
     addRevenueShareAttributesToParams(formData);
-    // able to do this because appending is independent
-    addDocumentsToParams(formData);
-    fetch("http://form-rails-api.herokuapp.com/doctors", {
-      method: "POST",
-      headers: {},
-      body: formData,
-    }).then(response =>
-      response.ok ? redirect() : alert("Not created change accordingly")
-    );
+    handleFile(formData)
+      .then(message => {
+        // console.log(message);
+        // console.log("This worked and submitted!");
+        fetch("http://form-rails-api.herokuapp.com/doctors", {
+          method: "POST",
+          headers: {},
+          body: formData,
+        }).then(response =>
+          response.ok ? redirect() : alert("Not created change accordingly")
+        );
+      })
+      .catch(error => alert(error));
   };
 
   return (
@@ -127,12 +144,7 @@ const DoctorForm = ({ redirect }) => {
       />
       <br />
       <label>Images & Documents</label>
-      <input
-        type="file"
-        multiple={true}
-        ref={fileInput}
-        onChange={handleFile}
-      />
+      <input type="file" multiple={true} ref={fileInput} />
       <br />
       <input type="submit" value="Submit" />
     </form>
