@@ -1,5 +1,6 @@
 import React, { useState, createRef } from "react";
 import { DirectUpload } from "@rails/activestorage";
+import "./direct_upload.css";
 
 const DoctorForm = ({ redirect }) => {
   const [doctor, setDoctor] = useState({
@@ -87,8 +88,14 @@ const DoctorForm = ({ redirect }) => {
     });
   };
 
+  const changeInputs = status => {
+    document.querySelectorAll("input").forEach(element => {
+      element.disabled = status;
+    });
+  };
   const handleSubmit = event => {
     event.preventDefault();
+    changeInputs("disabled");
     var formData = new FormData();
 
     addDoctorToParams(formData);
@@ -105,7 +112,10 @@ const DoctorForm = ({ redirect }) => {
           response.ok ? redirect() : alert("Not created change accordingly")
         );
       })
-      .catch(error => alert(error));
+      .catch(error => {
+        alert(error);
+        changeInputs("");
+      });
   };
 
   return (
