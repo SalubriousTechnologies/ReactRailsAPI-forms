@@ -1,6 +1,52 @@
 import React, { useState, createRef } from "react";
 import { DirectUpload } from "@rails/activestorage";
-import "./direct_upload.css";
+import "./direct_uploads.css";
+
+class Uploader {
+  constructor(file, url, index) {
+    this.file = file;
+    this.url = url;
+    this.index = index;
+    this.uploadObj = new DirectUpload(this.file, this.url, this);
+    this.progressElement = document.getElementById(
+      `direct-upload-${this.index}`
+    );
+    this.progressBar = document.getElementById(
+      `direct-upload-progress-${this.index}`
+    );
+  }
+
+  upload(file) {
+    return new Promise((resolve, reject) => {
+      this.uploadObj.create((error, blob) => {
+        if (error) {
+          this.progressElement.classList.add("direct-upload--error");
+          this.progressElement.setAttribute("title", error);
+          reject(error);
+        } else {
+          this.progressElement.classList.add("direct-upload--complete");
+          const hiddenField = document.createElement("input");
+          hiddenField.setAttribute("type", "hidden");
+          hiddenField.setAttribute("value", blob.signed_id);
+          hiddenField.id = `document_${this.index}`;
+          document.querySelector("form").appendChild(hiddenField);
+          resolve("Success");
+        }
+      });
+    });
+  }
+
+  directUploadDidProgress(event) {
+    this.progressBar.style.width = `${(100 * event.loaded) / event.total}%`;
+  }
+
+  directUploadWillStoreFileWithXHR(request) {
+    this.progressElement.classList.remove("direct-upload--pending");
+    request.upload.addEventListener("progress", event =>
+      this.directUploadDidProgress(event)
+    );
+  }
+}
 
 const DoctorForm = ({ redirect }) => {
   const [doctor, setDoctor] = useState({
@@ -44,6 +90,18 @@ const DoctorForm = ({ redirect }) => {
 
   const fileInput = createRef();
 
+  const addProgressBar = (file, index, handler) => {
+    handler.insertAdjacentHTML(
+      "afterend",
+      `<br/>
+    <div id="direct-upload-${index}" class="direct-upload direct-upload--pending">
+    <div id="direct-upload-progress-${index}" class="direct-upload__progress" 
+    style="width: 0%"></div>
+    <span class=direct-upload__filename">${file.name}</span>
+    </div>`
+    );
+  };
+
   const handleFile = formData => {
     return new Promise((resolve, reject) => {
       const promises = [];
@@ -51,6 +109,7 @@ const DoctorForm = ({ redirect }) => {
         // console.log(
         //   `handling file ${fileInput.current.files[i]} at index ${i}`
         // );
+        addProgressBar(fileInput.current.files[i], i, fileInput.current);
         promises.push(uploadFile(fileInput.current.files[i], i));
       }
       Promise.all(promises)
@@ -72,19 +131,12 @@ const DoctorForm = ({ redirect }) => {
     return new Promise((resolve, reject) => {
       const URL =
         "http://form-rails-api.herokuapp.com/rails/active_storage/direct_uploads";
-      const upload = new DirectUpload(file, URL);
-      upload.create((error, blob) => {
-        if (error) {
-          reject(error);
-        } else {
-          const hiddenField = document.createElement("input");
-          hiddenField.setAttribute("type", "hidden");
-          hiddenField.setAttribute("value", blob.signed_id);
-          hiddenField.id = `document_${index}`;
-          document.querySelector("form").appendChild(hiddenField);
-          resolve("Success");
-        }
-      });
+      new Uploader(file, URL, index)
+        .upload(file)
+        .then(message => resolve(message))
+        .catch(error => reject(error));
+      // console.log(returnValue);
+      // classInst.uploadFunc();
     });
   };
 
